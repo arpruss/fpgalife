@@ -41,14 +41,14 @@ attribute altera_attribute of button : signal is "-name WEAK_PULL_UP_RESISTOR ON
 end life;   
 
 architecture behavioral of life is
-    constant pwmBits : natural := 4;
+    constant pwmBits : natural := 2;
     constant screenWidth : natural := 640;
-    constant clockFrequency : real := 208.33333333e6;
+    constant clockFrequency : real := 52.083333e6; -- 104.166667e6;
     signal clock : std_logic; 
     signal req: std_logic;
     signal x : unsigned(9 downto 0);
     signal y : unsigned(8 downto 0);
-    signal pixel: unsigned(pwmBits-1 downto 0) ;
+    signal pixel: unsigned(pwmBits-1 downto 0);
     signal posX : signed(10 downto 0) := to_signed(screenWidth/2,11);
     signal vX : signed(1 downto 0) := to_signed(1,2);
     signal posY : signed(9 downto 0) := to_signed(240,10);
@@ -92,38 +92,34 @@ begin
                     end loop;
                  else
                     display_board <= game_board;
-                    if frame_count = 0 then
-                        for i in 0 to cols-1 loop
-                            for j in 0 to rows-1 loop
-                                case resize(game_board((i-1)mod cols,j),4) + 
-                                             resize(game_board((i+1)mod cols,j),4) +
-                                             resize(game_board((i-1)mod cols,(j-1)mod rows),4) + 
-                                             resize(game_board(i,(j-1)mod rows),4) + 
-                                             resize(game_board((i+1)mod cols,(j-1)mod rows),4) + 
-                                             resize(game_board((i-1)mod cols,(j+1)mod rows),4) + 
-                                             resize(game_board(i,(j+1)mod rows),4) + 
-                                             resize(game_board((i+1)mod cols,(j+1)mod rows),4) is 
-                                    when to_unsigned(3,4) =>
-                                        game_board(i,j) <= to_unsigned(1,1);
-                                    when to_unsigned(2,4) =>
-                                        game_board(i,j) <= game_board(i,j);
-                                    when others =>
-                                        game_board(i,j) <= to_unsigned(0,1);
-                                end case;
-                            end loop;
-                        end loop;
-                    end if;
                  end if;
+            end if;  
+            if initialized = '1' then
+                for i in 0 to cols-1 loop
+                    for j in 0 to rows-1 loop
+                        case resize(game_board((i-1)mod cols,j),4) + 
+                                     resize(game_board((i+1)mod cols,j),4) +
+                                     resize(game_board((i-1)mod cols,(j-1)mod rows),4) + 
+                                     resize(game_board(i,(j-1)mod rows),4) + 
+                                     resize(game_board((i+1)mod cols,(j-1)mod rows),4) + 
+                                     resize(game_board((i-1)mod cols,(j+1)mod rows),4) + 
+                                     resize(game_board(i,(j+1)mod rows),4) + 
+                                     resize(game_board((i+1)mod cols,(j+1)mod rows),4) is 
+                            when to_unsigned(3,4) =>
+                                game_board(i,j) <= to_unsigned(1,1);
+                            when to_unsigned(2,4) =>
+                                game_board(i,j) <= game_board(i,j);
+                            when others =>
+                                game_board(i,j) <= to_unsigned(0,1);
+                        end case;
+                    end loop;
+                end loop;
             end if;
         end if;
     end process;
                     
     process(req)
 
-    variable xs : signed(10 downto 0);
-    variable ys : signed(9 downto 0);
-    variable dist2 : signed(xs'length+ys'length downto 0);
-    variable distScaled : unsigned(xs'length+ys'length-11 downto 0);
     begin
         if rising_edge(req) then
             if screen_x0-1 = x then
@@ -149,17 +145,12 @@ begin
                 end if;                
             end if;
                     
-            if screen_x0 <= x and display_row < rows and
-                screen_y0 <= y and display_col < cols then
-                if display_board(to_integer(display_col), to_integer(display_row)) = 1 then
-                    pixel <= to_unsigned(255, pwmBits);
-                else
-                    pixel <= to_unsigned(2**pwmBits/3, pwmBits);
-                end if;
+            if screen_x0 <= x and display_col < cols and
+                screen_y0 <= y and display_row < rows then
+                pixel <= display_board(to_integer(display_col), to_integer(display_row))(0) & '1';
             else
                 pixel <= to_unsigned(0, pwmBits);
             end if;
          end if;
     end process;
 end behavioral;
-
